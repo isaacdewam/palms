@@ -58,6 +58,8 @@ export const api = {
   /** Moves every audio file in `folder` to the Trash and returns how many went. */
   clearFolder: (folder: string) => invoke<number>("clear_folder", { folder }),
   defaultMusicDir: () => invoke<string>("default_music_dir"),
+  /** Creates `name` inside `parent` and returns the new folder's path. */
+  makeDir: (parent: string, name: string) => invoke<string>("make_dir", { parent, name }),
   checkTools: () => invoke<string>("check_tools"),
 };
 

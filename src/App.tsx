@@ -20,6 +20,7 @@ import { CoverCropDialog } from "@/components/cover-crop-dialog";
 import { SelectionActions } from "@/components/selection-actions";
 import type { LeftOutTrack } from "@/components/left-out-menu";
 import { EmptyState } from "@/components/empty-state";
+import { Onboarding, StartCoach } from "@/components/onboarding";
 import { HistoryView } from "@/components/history-view";
 import { RunSteps, type Phase } from "@/components/run-steps";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -354,6 +355,10 @@ export default function App() {
   const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  // onboarding's last step: a tip pointing at the source bar, shown once the folder is set up
+  const [coach, setCoach] = useState(false);
+  const sourceRef = useRef<HTMLDivElement>(null);
+  const closeCoach = useCallback(() => setCoach(false), []);
   // the phone guide: `synced` is how many tracks the last sync added, null when opened from settings
   const [guide, setGuide] = useState<{ synced: number | null } | null>(null);
   const settingsRef = useRef(settings);
@@ -368,6 +373,8 @@ export default function App() {
   const [history, setHistory] = useState<HistoryRun[]>([]);
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
+  // the tip is done once a run starts (Enter or the scrape button, which are inside the bar)
+  if (coach && phase !== "idle") setCoach(false);
   const [scrapeCount, setScrapeCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [toolWarning, setToolWarning] = useState<string | null>(null);
@@ -861,6 +868,7 @@ export default function App() {
                         {(phase === "idle" || (phase === "done" && !caughtUp)) && (
                           <motion.div
                             key="source"
+                            ref={sourceRef}
                             layout
                             initial={{ opacity: 0, y: -8, scale: 0.98, filter: "blur(4px)" }}
                             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
@@ -1110,6 +1118,19 @@ export default function App() {
           />
         )}
       </div>
+      <AnimatePresence>
+        {settings && !settings.onboarded && (
+          <Onboarding
+            key="onboarding"
+            folder={settings.folder}
+            onDone={(folder) => {
+              updateSettings({ folder, onboarded: true });
+              setCoach(true);
+            }}
+          />
+        )}
+        {coach && <StartCoach key="coach" target={sourceRef} onClose={closeCoach} />}
+      </AnimatePresence>
     </MotionConfig>
   );
 }
