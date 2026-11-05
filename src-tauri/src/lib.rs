@@ -374,11 +374,24 @@ async fn clear_folder(folder: String) -> Result<usize, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Creates `name` inside `parent` (the onboarding's new local files folder) and returns its full path.
+#[tauri::command]
+async fn make_dir(parent: String, name: String) -> Result<String, String> {
+    let name = name.trim();
+    // one plain folder name, so the folder can't land outside `parent`
+    if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']) {
+        return Err("use a folder name without slashes.".into());
+    }
+    let dir = std::path::Path::new(&parent).join(name);
+    tokio::fs::create_dir_all(&dir).await.map_err(|e| e.to_string())?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn default_music_dir() -> String {
     dirs::audio_dir()
         .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join("Music"))
-        .join("Spotify Local")
+        .join("Local Files")
         .to_string_lossy()
         .into_owned()
 }
@@ -478,7 +491,7 @@ pub fn run() {
             }
         })
         .manage(dsp::Dsp::new())
-        .invoke_handler(tauri::generate_handler![scrape, dsp::check_dsp, sync_track, find_local, load_image, save_cover, default_music_dir, check_tools, count_audio, clear_folder])
+        .invoke_handler(tauri::generate_handler![scrape, dsp::check_dsp, sync_track, find_local, load_image, save_cover, default_music_dir, make_dir, check_tools, count_audio, clear_folder])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -486,6 +499,18 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn make_dir_creates_one_named_folder() {
+        let parent = std::env::temp_dir().join(format!("palms-make-{}", std::process::id())).to_string_lossy().into_owned();
+        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        for bad in ["", " ", "..", "a/b", "a\\b"] {
+            assert!(rt.block_on(make_dir(parent.clone(), bad.into())).is_err(), "{bad:?}");
+        }
+        let made = rt.block_on(make_dir(parent.clone(), " Spotify Local ".into())).unwrap();
+        assert!(made.ends_with("Spotify Local") && std::path::Path::new(&made).is_dir());
+        std::fs::remove_dir_all(&parent).unwrap();
+    }
 
     #[test]
     fn local_keys_ignore_case_and_punctuation() {

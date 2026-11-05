@@ -34,6 +34,8 @@ export interface Settings {
   spotify: SpotifyCreds;
   /** Offer the phone guide after a sync adds tracks. */
   phoneGuide: boolean;
+  /** First-run setup is done. */
+  onboarded: boolean;
 }
 
 let storePromise: Promise<Store> | null = null;
@@ -52,12 +54,15 @@ export async function setPlatform(p: Platform, state: PlatformState) {
 export async function getSettings(fallbackFolder: string): Promise<Settings> {
   const s = await store();
   // drop the old auto/manual setting so it isn't saved back
-  const { mode: _mode, ...saved } = (await s.get<Partial<Settings> & { mode?: unknown }>("settings")) ?? {};
+  const stored = await s.get<Partial<Settings> & { mode?: unknown }>("settings");
+  const { mode: _mode, ...saved } = stored ?? {};
   return {
     folder: fallbackFolder,
     limit: 100,
     spotify: { clientId: "", clientSecret: "" },
     phoneGuide: true,
+    // anyone with saved settings set the app up before onboarding existed
+    onboarded: stored != null,
     ...saved,
   };
 }
@@ -98,7 +103,7 @@ export async function saveSources(sources: Sources) {
   await s.set("sources", sources);
 }
 
-/** A short readable name for a source url, e.g. "isaac-dpr · likes". */
+/** A short readable name for a source url, e.g. "artist-name · likes". */
 export function labelFor(url: string): string {
   try {
     const u = new URL(url);
