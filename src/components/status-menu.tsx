@@ -15,6 +15,7 @@ const DOT: Partial<Record<string, string>> = {
   unreleased: "bg-emerald-500",
   released: "bg-amber-400",
   skipped: "bg-red-500",
+  checking: "animate-pulse bg-neutral-400",
 };
 
 /** A track's release status at a glance: green syncs, yellow is on DSPs, red is skipped, ? is maybe, ! is a failed check. */
@@ -22,6 +23,18 @@ export function StatusMark({ status }: { status: string }) {
   const dot = DOT[status];
   if (dot) return <span className={cn("size-2.5 shrink-0 rounded-full", dot)} />;
   return <span className="w-2.5 text-center text-sm leading-none font-semibold text-neutral-200">{status === "maybe" ? "?" : "!"}</span>;
+}
+
+const CORNER =
+  "flex size-8 items-center justify-center rounded-md bg-neutral-900/90 shadow-[0_2px_8px_rgb(0_0_0/0.4)]";
+
+/** The status mark on a cover's corner, read-only, for outside review (while the DSP check runs, and after). */
+export function StatusCorner({ status, label, className }: { status: string; label: string; className?: string }) {
+  return (
+    <span role="img" title={label} aria-label={label} className={cn(CORNER, className)}>
+      <StatusMark status={status} />
+    </span>
+  );
 }
 
 /** The status mark on a cover's corner, turned into a menu so the user can overrule the DSP check. */
@@ -42,7 +55,8 @@ export function StatusMenu({
         title={label}
         aria-label={`${label}, change release status`}
         className={cn(
-          "flex size-8 items-center justify-center rounded-md bg-neutral-900/90 shadow-[0_2px_8px_rgb(0_0_0/0.4)] outline-none transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-600 data-[state=open]:bg-neutral-800",
+          CORNER,
+          "outline-none transition-colors hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-neutral-600 data-[state=open]:bg-neutral-800",
           className,
         )}
       >

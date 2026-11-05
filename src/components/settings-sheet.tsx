@@ -47,6 +47,13 @@ function ConfirmAction({
 }) {
   const [state, setState] = useState<{ step: "idle" } | { step: "confirm" | "done"; text: string } | { step: "working" }>({ step: "idle" });
 
+  // The result line is a one-off receipt; left up, it reads like the current state.
+  useEffect(() => {
+    if (state.step !== "done") return;
+    const t = setTimeout(() => setState({ step: "idle" }), 4000);
+    return () => clearTimeout(t);
+  }, [state]);
+
   const ask = async () => {
     try {
       setState({ step: "confirm", text: await prompt() });

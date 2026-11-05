@@ -6,14 +6,14 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import Lenis from "lenis";
-import { ArrowLeft, CaseSensitive, CaseUpper, Download, ImagePlus, Settings2, UserRoundPen, UserRoundPlus, X } from "lucide-react";
+import { ArrowLeft, CaseLower, CaseSensitive, CaseUpper, Download, ImagePlus, Settings2, UserRoundPen, UserRoundPlus, X } from "lucide-react";
 import { AppHeader, HEADER_HEIGHT } from "@/components/app-header";
 import { Backdrop } from "@/components/backdrop";
 import { PalmsLogo } from "@/components/palms-logo";
 import { SettingsSheet } from "@/components/settings-sheet";
 import { PhoneGuide } from "@/components/phone-guide";
 import { SourceBar } from "@/components/source-bar";
-import { StatusMenu } from "@/components/status-menu";
+import { StatusCorner, StatusMenu } from "@/components/status-menu";
 import { CoverImage } from "@/components/cover-image";
 import { SYNC_SLOTS, SyncingCovers } from "@/components/syncing-covers";
 import { CoverCropDialog } from "@/components/cover-crop-dialog";
@@ -96,6 +96,9 @@ const STATUS: Record<Status, { label: string; tone: BadgeTone }> = {
   skipped: { label: "Skipped", tone: "neutral" },
   error: { label: "Failed", tone: "danger" },
 };
+
+// sync outcomes keep the text pill; release statuses show as the mark on the cover's corner
+const SYNC_STATUS = new Set<Status>(["syncing", "synced", "error"]);
 
 // list order, most worth a look first: unreleased, maybe released, couldn't check (e.g. Deezer rate limited), released, still checking
 const RANK: Record<Status, number> = {
@@ -241,7 +244,7 @@ const TrackCard = memo(function TrackCard({
           )}
         </button>
         <span className="pointer-events-none absolute inset-0 rounded-xl ring-[1.5px] ring-inset ring-black/30" />
-        {editable && (
+        {editable ? (
           // the DSP check is a guess, so in review the user has the final say on each track
           <StatusMenu
             className="absolute bottom-2.5 left-2.5"
@@ -255,6 +258,10 @@ const TrackCard = memo(function TrackCard({
               })
             }
           />
+        ) : (
+          !SYNC_STATUS.has(it.status) && (
+            <StatusCorner className="absolute bottom-2.5 left-2.5" status={it.status} label={STATUS[it.status].label} />
+          )
         )}
       </div>
 
@@ -284,6 +291,7 @@ const TrackCard = memo(function TrackCard({
                 actions={[
                   { label: "Capitalize", icon: <CaseSensitive className="size-3.5" />, onClick: () => recase(capitalizeWords) },
                   { label: "All caps", icon: <CaseUpper className="size-3.5" />, onClick: () => recase((s) => s.toUpperCase()) },
+                  { label: "Lowercase", icon: <CaseLower className="size-3.5" />, onClick: () => recase((s) => s.toLowerCase()) },
                 ]}
               />
               <input
@@ -308,8 +316,8 @@ const TrackCard = memo(function TrackCard({
       </div>
 
       <div className="mt-2 flex flex-col items-start gap-1.5">
-        {!editable && (
-          <Badge tone={STATUS[it.status].tone} dot pulse={it.status === "checking" || it.status === "syncing"}>
+        {!editable && SYNC_STATUS.has(it.status) && (
+          <Badge tone={STATUS[it.status].tone} dot pulse={it.status === "syncing"}>
             {STATUS[it.status].label}
           </Badge>
         )}
