@@ -41,7 +41,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "externalBin": ["binaries/ffmpeg"],
+    "resources": { "binaries/yt-dlp/": "yt-dlp/" }
   },
   "plugins": {
     "updater": {

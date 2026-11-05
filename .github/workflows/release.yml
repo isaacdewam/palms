@@ -41,6 +41,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # yt-dlp and ffmpeg are bundled into the app, so each release ships the newest yt-dlp
+      - run: ./scripts/fetch-binaries.sh
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -7,11 +7,21 @@ use tokio::process::Command;
 
 mod dsp;
 
-/// macOS GUI apps don't inherit the shell PATH, so look in the usual places.
+/// The bundled yt-dlp folder build (bundle.resources), else an installed one.
+fn yt_dlp(app: &AppHandle) -> String {
+    match app.path().resource_dir().map(|d| d.join("yt-dlp").join("yt-dlp_macos")) {
+        Ok(p) if p.exists() => p.to_string_lossy().into_owned(),
+        _ => find_bin("yt-dlp"),
+    }
+}
+
+/// ffmpeg ships next to the app binary (bundle.externalBin, see scripts/fetch-binaries.sh).
+/// Falls back to the usual install dirs, since macOS GUI apps don't inherit the shell PATH.
 fn find_bin(name: &str) -> String {
-    let candidates = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
+    let bundled = std::env::current_exe().ok().and_then(|exe| exe.parent().map(|d| d.to_path_buf()));
+    let candidates = bundled.into_iter().chain(["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"].map(PathBuf::from));
     for dir in candidates {
-        let p = Path::new(dir).join(name);
+        let p = dir.join(name);
         if p.exists() {
             return p.to_string_lossy().into_owned();
         }
@@ -62,7 +72,7 @@ async fn scrape(
         return Err(format!("Not a link: {url}"));
     }
     let limit = limit.unwrap_or(200);
-    let mut child = Command::new(find_bin("yt-dlp"))
+    let mut child = Command::new(yt_dlp(&app))
         .env("PATH", tool_path_env())
         .args([
             "-j",
@@ -184,9 +194,12 @@ async fn sync_track(app: AppHandle, dsp: tauri::State<'_, dsp::Dsp>, req: SyncRe
     tokio::fs::create_dir_all(&tmp).await.map_err(|e| e.to_string())?;
     let safe_id = sanitize(&req.id);
     let template = tmp.join(format!("{safe_id}.%(ext)s"));
-    let out = Command::new(find_bin("yt-dlp"))
+    let out = Command::new(yt_dlp(&app))
         .env("PATH", tool_path_env())
-        .args(["-x", "--audio-format", "mp3", "--audio-quality", "0", "--no-playlist", "--no-warnings", "-o"])
+        .args(["-x", "--audio-format", "mp3", "--audio-quality", "0", "--no-playlist", "--no-warnings"])
+        .arg("--ffmpeg-location")
+        .arg(find_bin("ffmpeg"))
+        .arg("-o")
         .arg(&template)
         .arg("--")
         .arg(&req.url)
@@ -371,9 +384,9 @@ fn default_music_dir() -> String {
 }
 
 #[tauri::command]
-async fn check_tools() -> Result<String, String> {
-    let out = Command::new(find_bin("yt-dlp")).arg("--version").output().await
-        .map_err(|_| "yt-dlp not found. Install with: brew install yt-dlp ffmpeg".to_string())?;
+async fn check_tools(app: AppHandle) -> Result<String, String> {
+    let out = Command::new(yt_dlp(&app)).arg("--version").output().await
+        .map_err(|_| "yt-dlp not found. Reinstall Palms.".to_string())?;
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
