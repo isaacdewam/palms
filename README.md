@@ -6,6 +6,7 @@
 
 **local files the easy way 😎**
 
+[download](https://github.com/isaacdewam/palms/releases/tag/v0.1.0)
 </div>
 
 ![palms reviewing unreleased tracks before a sync.](docs/preview.png)
